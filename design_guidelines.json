@@ -1,0 +1,168 @@
+{
+  "app_name": "InkBound",
+  "personality": "6 Glass / Luxe",
+  "personality_one_liner": "A cinematic, premium, and visually arresting booking experience that treats tattoo artistry with high-end editorial reverence.",
+  "color": {
+    "surface": "#0A0A0A",
+    "onSurface": "#EDEDED",
+    "surfaceSecondary": "#171717",
+    "onSurfaceSecondary": "#A3A3A3",
+    "surfaceTertiary": "#262626",
+    "onSurfaceTertiary": "#8A8A8A",
+    "surfaceInverse": "#F5F5F0",
+    "onSurfaceInverse": "#0A0A0A",
+    "brand": "#D9B76A",
+    "brandPrimary": "#D9B76A",
+    "onBrandPrimary": "#0F0F0F",
+    "brandSecondary": "#A68A48",
+    "onBrandSecondary": "#0A0A0A",
+    "brandTertiary": "#4A4027",
+    "onBrandTertiary": "#D9B76A",
+    "success": "#287846",
+    "onSuccess": "#A3E6B8",
+    "warning": "#A3782E",
+    "onWarning": "#F5D69D",
+    "error": "#8A2E2E",
+    "onError": "#F5B8B8",
+    "info": "#4A4A4A",
+    "onInfo": "#D4D4D4",
+    "border": "#262626",
+    "borderStrong": "#404040",
+    "divider": "#1F1F1F",
+    "muted": "#808080",
+    "onBrand": "#0F0F0F"
+  },
+  "typography": {
+    "displayFontFamily": "Fraunces",
+    "textFontFamily": "Satoshi",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous spacing. Allow the dark negative space to highlight the photography. Sticky CTAs must have safe-area padding at the bottom.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "0",
+  "navigation": "bottom_tabs",
+  "icon_set": "Phosphor",
+  "glassmorphism": {
+    "enabled": "true",
+    "do's": [
+      "Use expo-blur for the bottom tab bar, sticky headers over scrolling content, and sticky bottom CTA containers in the booking flow.",
+      "Apply frosted glass overlays on featured artist cards sitting on photo backdrops.",
+      "Always pair text on glass with a tint base underneath for readability (>=75% opacity on dark mode)."
+    ],
+    "dont's": [
+      "Never blur body text regions, form fields, or standard list rows."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Home / Discover",
+      "purpose": "A toggleable Map/List view for users to discover parlours and featured artists.",
+      "states": {
+        "loading": "Dark skeleton loaders mimicking image cards.",
+        "empty": "Illustration of a tattoo machine with 'No parlours found in this area'.",
+        "error": "Message 'Failed to load locations' with a retry button."
+      },
+      "layout": "Sticky header with Search and 'Map/List' segmented control. Beneath, a horizontal scroll for style tags (Traditional, Realism, etc.). The list view uses edge-to-edge cards with large imagery and glassmorphism headers."
+    },
+    {
+      "name": "Parlour Detail",
+      "purpose": "Showcase a specific tattoo parlour's vibe, artists, and reviews.",
+      "states": {
+        "loading": "Spinner centered.",
+        "empty": "N/A - detail data is either loaded or not.",
+        "error": "Error message with back button."
+      },
+      "layout": "Large cinematic hero image at the top with a heavy 3-stop vertical gradient scrim to black at the bottom. Floating back button. Content divided into sticky tabs (Gallery, Artists, Reviews). Sticky 'Book Now' CTA inside a glass container pinned to the bottom."
+    },
+    {
+      "name": "Artist Profile",
+      "purpose": "A media-rich showcase of an artist's portfolio and available services.",
+      "states": {
+        "loading": "Grid skeletons.",
+        "empty": "Message: 'Portfolio coming soon'.",
+        "error": "Error loading portfolio."
+      },
+      "layout": "Profile header (avatar in a tinted circle if no real photo, but prefer photo). A dense, masonry-style image grid for the portfolio to maximize visual impact. Sticky 'Book Artist' CTA."
+    },
+    {
+      "name": "Booking Flow",
+      "purpose": "Step-by-step wizard to secure an appointment.",
+      "states": {
+        "loading": "Spinner on submission.",
+        "empty": "N/A",
+        "error": "Validation errors below inputs in error color."
+      },
+      "layout": "Progress indicator at the top. Single question per screen (1: Select Service, 2: Select Date/Time using a calendar grid, 3: Add Details). Sticky 'Next/Confirm' button at the bottom."
+    },
+    {
+      "name": "Artist Dashboard",
+      "purpose": "Management hub for artists to view their schedule and requests.",
+      "states": {
+        "loading": "Spinner.",
+        "empty": "Message: 'Your schedule is clear today' with a subtle illustration.",
+        "error": "Error loading schedule."
+      },
+      "layout": "Utility-first dark layout. Oversized typography for today's appointment count. List of upcoming bookings with status badges (Pending, Confirmed). Segmented controls to switch days."
+    }
+  ],
+  "images": {
+    "hero_parlour_1": {
+      "url": "https://images.unsplash.com/photo-1760877611905-0f885a3ce551?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHwxfHx0YXR0b28lMjBzdHVkaW8lMjBpbnRlcmlvcnxlbnwwfHx8fDE3OTA0MjA3MTB8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Tattoo and piercing shop with ornate signage"
+    },
+    "hero_parlour_2": {
+      "url": "https://images.unsplash.com/photo-1775135981378-4e7c1767436d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODF8MHwxfHNlYXJjaHwyfHx0YXR0b28lMjBzdHVkaW8lMjBpbnRlcmlvcnxlbnwwfHx8fDE3OTA0MjA3MTB8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Tattoo artist working on a client's arm in studio"
+    },
+    "artist_working_close": {
+      "url": "https://images.unsplash.com/photo-1568515045052-f9a854d70bfd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTB8MHwxfHNlYXJjaHwxfHx0YXR0b28lMjBhcnRpc3QlMjB3b3JraW5nfGVufDB8fHx8MTc5MDQyMDcxMHww&ixlib=rb-4.1.0&q=85",
+      "alt": "Close up of tattoo artist's needle and hands"
+    },
+    "portfolio_tattoo_1": {
+      "url": "https://images.unsplash.com/photo-1597852075234-fd721ac361d3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTB8MHwxfHNlYXJjaHwyfHx0YXR0b28lMjBhcnRpc3QlMjB3b3JraW5nfGVufDB8fHx8MTc5MDQyMDcxMHww&ixlib=rb-4.1.0&q=85",
+      "alt": "Detailed tattoo on an arm"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Adopt the '6 Glass / Luxe' dark-theme personality. The app should feel cinematic, expensive, and edgy. NEVER use blue, purple, or indigo; stick strictly to the muted champagne gold (#D9B76A) and dark charcoal/blacks.",
+    "For the typography, use Fraunces for large display headings (parlour names, titles) and Satoshi for all body text and UI labels. Ensure font weights never exceed 500.",
+    "Implement a Map + List toggle on the home screen. When showing the List, use edge-to-edge cards with high-quality images and a subtle glassmorphism overlay for the card text.",
+    "Whenever text sits on top of an image (like hero banners on the Parlour Detail screen), you MUST implement the gradient-to-dark scrim pattern (Layer 0: Image, Layer 1: expo-linear-gradient transparent to ≥70% surfaceInverse, Layer 2: Text).",
+    "The Booking Flow must be broken down into single-question steps to reduce cognitive load. Ensure the 'Next' or 'Confirm' CTA is sticky at the bottom, wrapped in a frosted glass container over any scrolling content.",
+    "On the Artist Dashboard, lean slightly into utility with oversized metrics, but keep the luxe aesthetic with sharp borders and clean typography.",
+    "Ensure all primary interactive components (tabs, main CTAs) have haptic feedback wired up.",
+    "Do not use generic system alerts for errors; build cohesive full-screen Error/Empty states using the dark palette and muted gold accents."
+  ]
+}

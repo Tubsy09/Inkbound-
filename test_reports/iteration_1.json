@@ -1,0 +1,41 @@
+{
+  "summary": "InkBound full-stack review. Backend: 23/23 pytest passing on public URL (auth register/login/me/logout, styles, parlours list+style/q filters, parlour/artist details, booking slots/create with conflict/auth, /bookings/me, /bookings/artist, PATCH status with role checks + 403 for third-party, review post updates parlour rating/review_count). Frontend UI on mobile viewport (390x844): demo login for both customer and artist works; discover list/map toggle works (web fallback via testID discover-map-web is shown as expected since react-native-maps has no web renderer); style chip filter works; parlour detail Gallery/Artists/Reviews tabs functional; posting a review works; full 4-step booking flow (Service->Date->Time->Confirm) creates a booking and lands on My Bookings; Cancel action on My Bookings works; sign out works and returns to /login; artist demo can see the Studio tab and reach the dashboard (Total counter reflects bookings). One caching bug identified: react-query cache is NOT cleared/invalidated on signOut, so when switching from customer to artist the artist dashboard initially shows a stale count (observed Total=2 but Pending=0 despite an actually-pending Mara Voss booking) until a manual refresh. Additionally seed uses deprecated FastAPI on_event handlers (not blocking).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "startup/shutdown", "issue": "FastAPI @app.on_event('startup') and 'shutdown' are deprecated. Migrate to lifespan context manager."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "app/(tabs)/dashboard.tsx (Studio) + auth-context.signOut", "issue": "React-query cache is not cleared on sign out. After signing out as customer and signing in as artist, the artist Studio dashboard shows stale pending/confirmed counters (observed Total=2 with Pending=0 while a Pending booking existed for ar_1). Fix: on signOut and on successful sign-in, call queryClient.clear() (or invalidate/removeQueries for ['bookings'] scope).", "testID": "filter-Pending", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "booking/[artistId] date step", "issues": ["Horizontal day carousel has no visible affordance/indicator that it scrolls beyond 5 days. Consider adding a subtle right-edge fade or arrow."]}
+    ],
+    "react_native_issues": [
+      {"component": "Animated (RN Web)", "issue": "Runtime warning: Animated: useNativeDriver is not supported on web. Wrap or gate useNativeDriver by Platform.OS !== 'web' (or ignore) to silence warnings during web preview testing."},
+      {"component": "View pointerEvents prop", "issue": "Runtime warning: props.pointerEvents is deprecated. Use style.pointerEvents instead. Search for `pointerEvents=` prop usages in components (likely GradientScrim/overlay wrappers) and move to style."}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_inkbound.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "In src/auth/auth-context.tsx, import the queryClient and call queryClient.clear() (or removeQueries({queryKey:['bookings']}) + removeQueries({queryKey:['parlours']})) inside signOut, and also after successful signInEmail/signUpEmail/signInGoogle, so state from a previous user does not leak.",
+    "Replace FastAPI @app.on_event('startup'|'shutdown') with a lifespan context manager to remove the DeprecationWarning.",
+    "Sweep the frontend for `pointerEvents=` prop usages and move them to style.pointerEvents (RN Web deprecation).",
+    "Gate any useNativeDriver:true animations by Platform.OS !== 'web' to silence the recurring web warning."
+  ],
+  "critical_code_review_comments": [
+    "server.py get_current_user handles expired sessions manually; combined with the TTL index on user_sessions.expires_at this is fine but comment that Mongo purges expired docs asynchronously.",
+    "server.py PATCH /bookings/{id}/status allows a customer 'owner' to set status to 'confirmed'/'completed'/'declined' too — consider restricting non-cancel transitions to the artist role only (currently a customer could self-confirm their own booking).",
+    "seed_data.py uses fixed rating/review_count numbers, but POST /reviews recomputes them from stored reviews only; seeded review_count (e.g. 128) will collapse to the count of actually-stored reviews on the first new review. Recommend seeding reviews to match, or use $inc-only updates."
+  ],
+  "updated_files": ["/app/backend/tests/test_inkbound.py"],
+  "success_rate": {"backend": "100%", "frontend": "~95%"},
+  "seed_data_creation": "Created a Mara Voss (ar_1) pending booking via UI to seed artist dashboard; other TEST_ prefixed reviews/bookings created via pytest.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend base URL is https://tattoo-spots.preview.emergentagent.com and demo creds are in /app/memory/test_credentials.md. Booking flow is 4 steps and needs a click on booking-next between each. Dashboard-cache-after-signout bug requires signing out as customer then signing in as artist and observing Studio counters (should reflect fresh /api/bookings/artist).",
+  "rca_of_issue": "Bug: Stale Studio dashboard counters after user switch. RCA: signOut in src/auth/auth-context.tsx clears the auth token but never touches the react-query cache. QueryClient is created once at the app root, so cached responses keyed as ['bookings','artist'] (which returned [] under a non-artist user) survive the auth swap and are served to the newly-logged-in artist until a manual pull-to-refresh. Reproduction: 1) log in as customer, book Mara Voss (ar_1) - booking is Pending; 2) sign out from Profile; 3) log in as artist demo; 4) open Studio tab -> Pending count is 0 even though the booking is pending. Mitigation: import queryClient in auth-context and call queryClient.clear() inside signOut, and after every successful sign-in call queryClient.invalidateQueries() (or clear())."
+}
