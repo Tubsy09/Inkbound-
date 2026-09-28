@@ -43,4 +43,12 @@ Build a mobile app: tattoo parlour location app and booking appointments.
 
 ## Next Tasks
 - Location-based sorting & filters on Discover.
-- Artist onboarding (new artist signups create their own studio/profile).
+
+## Feature additions (2026-09-28)
+- **Artist onboarding**: new artists create a studio profile (name, address, styles, specialty, bio) → auto-creates parlour + artist + starter service menu; cover/avatar/portfolio photos upload to Emergent Object Storage.
+- **Favourites / Saved**: clients save studios & artists (heart on cards + detail screens); dedicated Saved tab.
+- **Near Me**: Discover "Near me" toggle requests location and sorts studios by distance (graceful fallback if denied).
+- **Earnings dashboard**: artist Studio tab shows Today / This Week totals, a 7-day bar chart, all-time earned + pending revenue.
+- **Profile management & public preview**: edit studio profile, add/remove portfolio photos, and "Preview how clients see your profile" (opens the public artist view).
+- Backend regression: 40/40 tests passing.
+- Stripe deposit checkout (20% of service price) implemented via emergentintegrations hosted Checkout (Expo Go + web friendly); **awaiting the user's `sk_test_...` key** — `/api/checkout/*` returns 503 until set.

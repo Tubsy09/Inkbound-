@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
+import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -15,8 +16,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/src/api/client";
 import { DiscoverMap } from "@/src/components/DiscoverMap";
+import { HeartButton } from "@/src/components/HeartButton";
 import { Icon } from "@/src/components/Icon";
+import { useToast } from "@/src/components/toast";
 import { GradientScrim, Rating, StyleChips } from "@/src/components/ui";
+import { useFavIds } from "@/src/hooks/useFavourites";
 import { usesNativeTabs } from "@/src/navigation";
 import { fonts, makeStyles, useTheme } from "@/src/theme";
 import type { Parlour } from "@/src/types";
@@ -26,12 +30,18 @@ export default function Discover() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const toast = useToast();
 
   const [view, setView] = useState<"list" | "map">("list");
   const [style, setStyle] = useState("All");
   const [search, setSearch] = useState("");
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [nearMe, setNearMe] = useState(false);
 
   const bottomChrome = usesNativeTabs ? insets.bottom : 0;
+
+  const { data: favIds } = useFavIds();
+  const favParlours = favIds?.parlour ?? [];
 
   const { data: stylesData } = useQuery({
     queryKey: ["styles"],
@@ -39,11 +49,16 @@ export default function Discover() {
   });
 
   const { data, isLoading, isError, refetch, isRefetching } = useQuery({
-    queryKey: ["parlours", style, search],
+    queryKey: ["parlours", style, search, nearMe, coords],
     queryFn: () => {
       const params = new URLSearchParams();
       if (style !== "All") params.set("style", style);
       if (search.trim()) params.set("q", search.trim());
+      if (nearMe && coords) {
+        params.set("lat", String(coords.lat));
+        params.set("lng", String(coords.lng));
+        params.set("sort", "distance");
+      }
       const qs = params.toString();
       return api<{ parlours: Parlour[] }>(`/api/parlours${qs ? `?${qs}` : ""}`);
     },
@@ -51,11 +66,49 @@ export default function Discover() {
 
   const parlours = data?.parlours ?? [];
 
+  const toggleNearMe = async () => {
+    if (nearMe) {
+      setNearMe(false);
+      return;
+    }
+    if (coords) {
+      setNearMe(true);
+      return;
+    }
+    const current = await Location.getForegroundPermissionsAsync();
+    let granted = current.granted;
+    if (!granted && current.canAskAgain) {
+      const req = await Location.requestForegroundPermissionsAsync();
+      granted = req.granted;
+    }
+    if (!granted) {
+      toast.show("Enable location to sort by distance", "info");
+      return;
+    }
+    try {
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      setNearMe(true);
+    } catch {
+      toast.show("Could not get your location", "error");
+    }
+  };
+
   const openParlour = (p: Parlour) => router.push(`/parlour/${p.id}`);
 
   const header = (
     <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-      <Text style={styles.title}>Find your studio</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>Find your studio</Text>
+        <Pressable
+          testID="near-me-btn"
+          onPress={toggleNearMe}
+          style={[styles.nearMe, nearMe && styles.nearMeActive]}
+        >
+          <Icon name="crosshairs-gps" size={15} color={nearMe ? colors.onBrandPrimary : colors.brandPrimary} />
+          <Text style={[styles.nearMeText, nearMe && styles.nearMeTextActive]}>Near me</Text>
+        </Pressable>
+      </View>
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>
           <Icon name="magnify" size={20} color={colors.muted} />
@@ -97,6 +150,9 @@ export default function Discover() {
       <View style={styles.priceTag}>
         <Text style={styles.priceTagText}>{item.price_level}</Text>
       </View>
+      <View style={styles.heartWrap}>
+        <HeartButton kind="parlour" itemId={item.id} active={favParlours.includes(item.id)} onDark />
+      </View>
       <View style={styles.cardContent}>
         <View style={styles.cardTagRow}>
           {item.styles.slice(0, 2).map((s) => (
@@ -111,6 +167,9 @@ export default function Discover() {
           <Text style={styles.cardAddr} numberOfLines={1}>
             {item.address}
           </Text>
+          {(item as any).distance_km != null ? (
+            <Text style={styles.distance}>· {(item as any).distance_km} km</Text>
+          ) : null}
         </View>
         <View style={styles.cardBottom}>
           <Rating value={item.rating} count={item.review_count} />
@@ -161,7 +220,12 @@ export default function Discover() {
 const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.surface },
   header: { paddingBottom: 8, backgroundColor: colors.surface },
-  title: { color: colors.onSurface, fontFamily: fonts.display, fontSize: 30, paddingHorizontal: 20, marginBottom: 12 },
+  titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 12 },
+  title: { color: colors.onSurface, fontFamily: fonts.display, fontSize: 30 },
+  nearMe: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, height: 36, borderRadius: 999, borderWidth: 1, borderColor: colors.brandPrimary, backgroundColor: "transparent" },
+  nearMeActive: { backgroundColor: colors.brandPrimary },
+  nearMeText: { color: colors.brandPrimary, fontFamily: fonts.medium, fontSize: 13 },
+  nearMeTextActive: { color: colors.onBrandPrimary },
   searchRow: { flexDirection: "row", gap: 10, paddingHorizontal: 20, marginBottom: 12 },
   searchBox: {
     flex: 1,
@@ -205,13 +269,15 @@ const useStyles = makeStyles((colors) => ({
     paddingVertical: 6,
   },
   priceTagText: { color: colors.brandPrimary, fontFamily: fonts.bold, fontSize: 13 },
+  heartWrap: { position: "absolute", top: 12, left: 12 },
   cardContent: { position: "absolute", left: 0, right: 0, bottom: 0, padding: 18, gap: 6 },
   cardTagRow: { flexDirection: "row", gap: 8, marginBottom: 2 },
   tag: { backgroundColor: colors.brandTertiary, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   tagText: { color: colors.onBrandTertiary, fontFamily: fonts.medium, fontSize: 11 },
   cardName: { color: "#FFFFFF", fontFamily: fonts.display, fontSize: 24 },
   cardMeta: { flexDirection: "row", alignItems: "center", gap: 4 },
-  cardAddr: { color: colors.onSurfaceSecondary, fontFamily: fonts.body, fontSize: 13, flex: 1 },
+  cardAddr: { color: colors.onSurfaceSecondary, fontFamily: fonts.body, fontSize: 13, flexShrink: 1 },
+  distance: { color: colors.brandPrimary, fontFamily: fonts.medium, fontSize: 13 },
   cardBottom: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
   hours: { color: colors.muted, fontFamily: fonts.body, fontSize: 12 },
 }));

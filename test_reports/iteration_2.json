@@ -1,0 +1,34 @@
+{
+  "summary": "InkBound NEW-features regression. Backend: 40/40 pytest passing (23 pre-existing in test_inkbound.py + 17 new in test_new_features.py) — covers /api/favourites (toggle parlour+artist, list, ids, auth, invalid-kind 400), /api/parlours?lat=&lng=&sort=distance (all cards get numeric distance_km, ascending sort), /api/upload (auth-required, roundtrip PNG persisted + fetched via /api/files/{path}, 404 for missing), /api/studio/setup (fresh user gets parlour+artist+services created, role promoted to artist, artist_id linked; studio/me returns full object; earnings zeros; portfolio append), /api/studio/me (artist and non-artist), /api/studio/earnings (7-day chart shape, today>0, total>0 from seeded ar_1 data, 400 for customer), /api/studio/portfolio requires artist_id, /api/checkout/create and /api/checkout/status/{id} return 503 while STRIPE_API_KEY unset. Frontend mobile UI (390x844): customer demo login -> Discover shows [data-testid='near-me-btn'] and per-card [data-testid='fav-parlour-*'] hearts; tapping hearts flips icon and persists; Saved tab renders STUDIOS section with saved-parlour-{id} rows + Rating + filled hearts. Near me tap does NOT crash (browser geolocation was denied in harness; list simply remained without ordering change — graceful). Artist demo login -> bottom tab set replaces Saved with Studio; Studio screen renders EarningsCard (Today $470/2 appts, This week $470/2 appts, 7-day bar chart Tue–Mon with values, All-time $2,320) plus Pending/Confirmed/Total tallies and Edit-studio + Portfolio icon buttons in the header. Everything visually clean on mobile viewport.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Discover — Near me toast", "issues": ["When the browser denies geolocation (typical in web/preview) the app silently keeps the default sorted list. Consider showing the promised info toast (e.g. 'Location unavailable — showing all studios') so users understand nothing happened when they tapped Near me."]}
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_inkbound.py",
+    "/app/backend/tests/test_new_features.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/test_reports/pytest/pytest_new_features.xml"
+  ],
+  "action_items": [
+    "(Optional) In app/(tabs)/index.tsx, when the geolocation permission is denied, surface a toast('Location unavailable — showing all studios') so the Near me tap gives visible feedback (currently silent no-op in preview/web).",
+    "(Carry-over from iter_1) Still recommend clearing the react-query cache inside auth-context.signOut and after successful sign-in to avoid stale artist dashboard counters when swapping accounts. Did NOT re-reproduce this iteration but the fix from iter_1 was not confirmed in code, so keep it on the list."
+  ],
+  "critical_code_review_comments": [
+    "server.py studio_setup: `existing_artist_id and (await db.artists.find_one(...) or {}).get('parlour_id')` uses `and` so if user has no artist_id it short-circuits to None, but if artist_id is set and the artist doc is missing it silently creates a new parlour orphaning services. Consider raising 404 in that edge case.",
+    "server.py studio_setup wipes and re-creates the entire service menu (`db.services.delete_many({'parlour_id': parlour_id})`) every save — this destroys any prior custom prices/services on edit. On repeat edits this is destructive; recommend only inserting missing style services or exposing service CRUD.",
+    "server.py studio_earnings sums 'confirmed'+'completed' by booking date; a booking made for a *future* date but already 'confirmed' will be counted as earned before it actually happens. Consider counting future-dated confirmed bookings under a separate 'upcoming_revenue' rather than 'total earned'.",
+    "server.py upload_file trusts the client-supplied ext and content_type — no image sniff or size cap. Add a max size (e.g. 8 MB) and validate the magic bytes to avoid abuse (uploads are anon-auth-only but still user-owned bucket)."
+  ],
+  "updated_files": ["/app/backend/tests/test_new_features.py"],
+  "success_rate": {"backend": "100%", "frontend": "~98%"},
+  "seed_data_creation": "Two toggled favourites (pl_2, pl_3) on customer@inkbound.com; a TEST_studio_* user created via /api/studio/setup with corresponding parlour + artist docs (TEST_ prefixed name). Pytest also creates several TEST_ prefixed users/reviews/bookings.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "40/40 backend tests are green. Test files at /app/backend/tests/test_inkbound.py + test_new_features.py. Demo creds in /app/memory/test_credentials.md. Heart testIDs on Discover are `fav-parlour-{id}`; Saved rows are `saved-parlour-{id}` and `saved-artist-{id}`. Login flow: click [data-testid='demo-customer'|'demo-artist'] then [data-testid='submit-auth'] (single 'Sign In' text ambiguates because a tab shares the label). Artist demo bottom-tab order: Discover / Bookings / Studio / Profile (no Saved). Preview host: https://tattoo-spots.preview.emergentagent.com."
+}

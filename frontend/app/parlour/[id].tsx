@@ -15,9 +15,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/src/api/client";
+import { HeartButton } from "@/src/components/HeartButton";
 import { Icon } from "@/src/components/Icon";
 import { useToast } from "@/src/components/toast";
 import { PrimaryButton, Rating } from "@/src/components/ui";
+import { useFavIds } from "@/src/hooks/useFavourites";
 import { fonts, makeStyles, useTheme } from "@/src/theme";
 import type { Artist, Parlour, Review, Service } from "@/src/types";
 
@@ -38,6 +40,9 @@ export default function ParlourDetail() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Gallery");
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
+
+  const { data: favIds } = useFavIds();
+  const isFav = (favIds?.parlour ?? []).includes(id as string);
 
   const { data, isLoading } = useQuery({
     queryKey: ["parlour", id],
@@ -84,6 +89,9 @@ export default function ParlourDetail() {
           >
             <Icon name="chevron-left" size={26} color={colors.onSurface} />
           </Pressable>
+          <View style={[styles.favFloat, { top: insets.top + 8 }]}>
+            <HeartButton kind="parlour" itemId={id as string} active={isFav} onDark />
+          </View>
           <View style={styles.heroContent}>
             <View style={styles.tagRow}>
               {parlour.styles.map((s) => (
@@ -219,6 +227,7 @@ const useStyles = makeStyles((colors) => ({
     justifyContent: "center",
   },
   heroContent: { position: "absolute", left: 0, right: 0, bottom: 0, padding: 20, gap: 6 },
+  favFloat: { position: "absolute", right: 16 },
   tagRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   tag: { backgroundColor: colors.brandTertiary, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   tagText: { color: colors.onBrandTertiary, fontFamily: fonts.medium, fontSize: 11 },

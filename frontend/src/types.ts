@@ -62,5 +62,8 @@ export type Booking = {
   time: string;
   note: string;
   status: string;
+  deposit_amount?: number;
+  deposit_percent?: number;
+  deposit_paid?: boolean;
   created_at: string;
 };

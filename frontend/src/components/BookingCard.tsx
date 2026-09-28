@@ -61,6 +61,21 @@ export function BookingCard({
 
       {booking.note ? <Text style={styles.note}>“{booking.note}”</Text> : null}
 
+      {perspective === "customer" && booking.deposit_amount ? (
+        <View style={styles.depositRow}>
+          <Icon
+            name={booking.deposit_paid ? "check-decagram" : "cash-clock"}
+            size={15}
+            color={booking.deposit_paid ? colors.success : colors.brandPrimary}
+          />
+          <Text style={[styles.depositText, booking.deposit_paid && { color: colors.success }]}>
+            {booking.deposit_paid
+              ? `Deposit paid · $${booking.deposit_amount}`
+              : `Deposit $${booking.deposit_amount} to secure this slot`}
+          </Text>
+        </View>
+      ) : null}
+
       {actions && actions.length ? (
         <View style={styles.actions}>
           {actions.map((a) => (
@@ -116,6 +131,8 @@ const useStyles = makeStyles((colors) => ({
   metaItem: { flexDirection: "row", alignItems: "center", gap: 5 },
   metaText: { color: colors.onSurfaceSecondary, fontFamily: fonts.medium, fontSize: 13 },
   note: { color: colors.onSurfaceSecondary, fontFamily: fonts.body, fontSize: 13, fontStyle: "italic" },
+  depositRow: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.surfaceTertiary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  depositText: { color: colors.onSurfaceSecondary, fontFamily: fonts.medium, fontSize: 13, flex: 1 },
   actions: { flexDirection: "row", gap: 10 },
   actionBtn: {
     flex: 1,

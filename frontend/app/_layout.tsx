@@ -50,6 +50,9 @@ function AuthGate() {
       <Stack.Screen name="parlour/[id]" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="artist/[id]" options={{ animation: "slide_from_right" }} />
       <Stack.Screen name="booking/[artistId]" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
+      <Stack.Screen name="studio/setup" options={{ animation: "slide_from_right" }} />
+      <Stack.Screen name="studio/portfolio" options={{ animation: "slide_from_right" }} />
+      <Stack.Screen name="payment-result" options={{ animation: "fade" }} />
     </Stack>
   );
 }

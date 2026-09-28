@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Platform, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api } from "@/src/api/client";
+import { createDeposit, openDeposit, pollStatus } from "@/src/api/payments";
 import { BookingCard } from "@/src/components/BookingCard";
 import { Icon } from "@/src/components/Icon";
 import { useToast } from "@/src/components/toast";
@@ -35,6 +36,26 @@ export default function Bookings() {
     onError: (e: any) => toast.show(e?.message ?? "Could not cancel", "error"),
   });
 
+  const payDeposit = async (booking: Booking) => {
+    try {
+      toast.show("Opening secure checkout…", "info");
+      const session = await createDeposit(booking.id);
+      await openDeposit(session.url);
+      if (Platform.OS !== "web") {
+        // On native the browser closes and returns here; verify via polling.
+        const result = await pollStatus(session.session_id);
+        qc.invalidateQueries({ queryKey: ["bookings"] });
+        toast.show(
+          result.payment_status === "paid" ? "Deposit paid — booking confirmed!" : "Payment not completed",
+          result.payment_status === "paid" ? "success" : "info",
+        );
+      }
+      // On web the page navigates to Stripe and returns to /payment-result.
+    } catch (e: any) {
+      toast.show(e?.message ?? "Could not start payment", "error");
+    }
+  };
+
   const bookings = data?.bookings ?? [];
 
   return (
@@ -65,11 +86,16 @@ export default function Bookings() {
             <BookingCard
               booking={item}
               perspective="customer"
-              actions={
-                ["pending", "confirmed"].includes(item.status)
-                  ? [{ label: "Cancel", onPress: () => cancel.mutate(item.id), variant: "decline" }]
-                  : undefined
-              }
+              actions={(() => {
+                const acts: { label: string; onPress: () => void; variant?: "confirm" | "decline" }[] = [];
+                if (!item.deposit_paid && item.deposit_amount && ["pending", "confirmed"].includes(item.status)) {
+                  acts.push({ label: "Pay Deposit", onPress: () => payDeposit(item), variant: "confirm" });
+                }
+                if (["pending", "confirmed"].includes(item.status)) {
+                  acts.push({ label: "Cancel", onPress: () => cancel.mutate(item.id), variant: "decline" });
+                }
+                return acts.length ? acts : undefined;
+              })()}
             />
           )}
           contentContainerStyle={{ padding: 20, paddingTop: 8, paddingBottom: bottomChrome + 24, gap: 14 }}

@@ -155,3 +155,34 @@ def build_seed():
     ]
 
     return {"parlours": parlours, "artists": artists, "services": services, "reviews": reviews}
+
+
+# Base service templates keyed by style, used for seeded + newly onboarded studios.
+SERVICE_TEMPLATES = [
+    ("Small Fine Line", "Fine Line", 120, 60),
+    ("Medium Custom Piece", "Blackwork", 350, 180),
+    ("Full Sleeve Session", "Japanese", 600, 360),
+    ("Geometric Design", "Geometric", 280, 150),
+    ("Watercolor Piece", "Watercolor", 400, 210),
+    ("Realism Portrait", "Realism", 550, 300),
+    ("Traditional Flash", "Traditional", 180, 90),
+    ("Neo-Traditional Piece", "Neo-Traditional", 320, 160),
+]
+
+
+def service_defs_for_styles(parlour_id: str, styles):
+    """Build a service menu for a studio: matching-style services + a consultation."""
+    chosen = [t for t in SERVICE_TEMPLATES if t[1] in styles]
+    if not chosen:
+        chosen = SERVICE_TEMPLATES[:2]
+    services = []
+    for i, (nm, style, price, mins) in enumerate(chosen):
+        services.append({
+            "id": f"sv_{parlour_id}_{i}", "parlour_id": parlour_id, "name": nm,
+            "style": style, "price": price, "duration_min": mins,
+        })
+    services.append({
+        "id": f"sv_{parlour_id}_c", "parlour_id": parlour_id, "name": "Consultation",
+        "style": "All", "price": 0, "duration_min": 30,
+    })
+    return services

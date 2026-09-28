@@ -19,6 +19,12 @@ export default function TabsLayout() {
           <NativeTabs.Trigger.Icon sf="map.fill" />
           <NativeTabs.Trigger.Label>Discover</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
+        {!isArtist ? (
+          <NativeTabs.Trigger name="saved">
+            <NativeTabs.Trigger.Icon sf="heart.fill" />
+            <NativeTabs.Trigger.Label>Saved</NativeTabs.Trigger.Label>
+          </NativeTabs.Trigger>
+        ) : null}
         <NativeTabs.Trigger name="bookings">
           <NativeTabs.Trigger.Icon sf="calendar" />
           <NativeTabs.Trigger.Label>Bookings</NativeTabs.Trigger.Label>
@@ -57,6 +63,14 @@ export default function TabsLayout() {
         options={{
           title: "Discover",
           tabBarIcon: ({ color }) => <Icon name="map-marker-radius" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="saved"
+        options={{
+          title: "Saved",
+          href: isArtist ? null : "/(tabs)/saved",
+          tabBarIcon: ({ color }) => <Icon name="heart-outline" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
