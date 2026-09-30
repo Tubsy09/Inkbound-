@@ -49,6 +49,23 @@ def haversine_km(lat1, lon1, lat2, lon2):
     return round(r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a)), 1)
 
 
+WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+
+def default_hours_config():
+    # Open Tue–Sun 11:00–20:00, closed Monday — sensible tattoo-studio default.
+    cfg = {}
+    for i, d in enumerate(WEEKDAYS):
+        cfg[d] = {"open": d != "mon", "start": "11:00", "end": "20:00"}
+    return cfg
+
+
+def slots_for_range(start: str, end: str):
+    sh = int(start.split(":")[0])
+    eh = int(end.split(":")[0])
+    return [f"{h:02d}:00" for h in range(sh, eh)]
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -292,11 +309,22 @@ TIME_SLOTS = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17
 
 @api_router.get("/bookings/slots")
 async def get_slots(artist_id: str, date: str):
+    artist = await db.artists.find_one({"id": artist_id}, {"_id": 0})
+    parlour = await db.parlours.find_one({"id": artist["parlour_id"]}, {"_id": 0}) if artist else None
+    hours = (parlour or {}).get("hours_config") or default_hours_config()
+    try:
+        weekday = WEEKDAYS[date_cls.fromisoformat(date).weekday()]
+    except Exception:
+        weekday = "mon"
+    day = hours.get(weekday, {"open": False})
+    if not day.get("open"):
+        return {"open": False, "slots": []}
+    all_slots = slots_for_range(day.get("start", "11:00"), day.get("end", "20:00"))
     taken = await db.bookings.find(
         {"artist_id": artist_id, "date": date, "status": {"$in": ["pending", "confirmed"]}}, {"_id": 0, "time": 1}
     ).to_list(100)
     taken_times = {t["time"] for t in taken}
-    return {"slots": [{"time": s, "available": s not in taken_times} for s in TIME_SLOTS]}
+    return {"open": True, "slots": [{"time": s, "available": s not in taken_times} for s in all_slots]}
 
 
 @api_router.post("/bookings")
@@ -496,8 +524,7 @@ async def studio_setup(body: StudioSetupInput, user: dict = Depends(get_current_
         parlour_id = make_id("pl")
     artist_id = existing_artist_id or make_id("ar")
 
-    parlour_doc = {
-        "id": parlour_id,
+    parlour_set = {
         "owner_user_id": user["user_id"],
         "name": body.name,
         "tagline": body.tagline or f"{styles[0]} specialists.",
@@ -505,19 +532,24 @@ async def studio_setup(body: StudioSetupInput, user: dict = Depends(get_current_
         "latitude": body.latitude,
         "longitude": body.longitude,
         "cover": body.cover or default_cover,
-        "gallery": [body.cover or default_cover],
         "styles": styles,
-        "rating": 5.0,
-        "review_count": 0,
         "price_level": body.price_level,
         "hours": body.hours,
         "deleted_at": None,
+    }
+    parlour_insert = {
+        "id": parlour_id,
+        "gallery": [body.cover or default_cover],
+        "rating": 5.0,
+        "review_count": 0,
+        "hours_config": default_hours_config(),
         "created_at": now,
     }
-    await db.parlours.update_one({"id": parlour_id}, {"$set": parlour_doc}, upsert=True)
+    await db.parlours.update_one(
+        {"id": parlour_id}, {"$set": parlour_set, "$setOnInsert": parlour_insert}, upsert=True
+    )
 
-    artist_doc = {
-        "id": artist_id,
+    artist_set = {
         "parlour_id": parlour_id,
         "owner_user_id": user["user_id"],
         "name": user.get("name", "Artist"),
@@ -525,11 +557,16 @@ async def studio_setup(body: StudioSetupInput, user: dict = Depends(get_current_
         "specialty": body.specialty or f"{styles[0]} Artist",
         "bio": body.bio or "Welcome to my studio.",
         "styles": styles,
+    }
+    artist_insert = {
+        "id": artist_id,
         "rating": 5.0,
         "years": 1,
         "portfolio": [],
     }
-    await db.artists.update_one({"id": artist_id}, {"$set": artist_doc}, upsert=True)
+    await db.artists.update_one(
+        {"id": artist_id}, {"$set": artist_set, "$setOnInsert": artist_insert}, upsert=True
+    )
 
     # Seed a starter service menu only on first setup; never wipe edited menus.
     existing_services = await db.services.count_documents({"parlour_id": parlour_id})
@@ -564,6 +601,49 @@ async def remove_portfolio(body: PortfolioInput, user: dict = Depends(get_curren
     await db.artists.update_one({"id": user["artist_id"]}, {"$pull": {"portfolio": body.url}})
     artist = await db.artists.find_one({"id": user["artist_id"]}, {"_id": 0})
     return {"portfolio": artist.get("portfolio", []) if artist else []}
+
+
+class ReorderInput(BaseModel):
+    order: List[str]
+
+
+@api_router.post("/studio/portfolio/reorder")
+async def reorder_portfolio(body: ReorderInput, user: dict = Depends(get_current_user)):
+    if not user.get("artist_id"):
+        raise HTTPException(status_code=400, detail="Set up your studio first")
+    artist = await db.artists.find_one({"id": user["artist_id"]}, {"_id": 0})
+    current = set(artist.get("portfolio", []) if artist else [])
+    # keep only known urls, then append any missing to be safe
+    new_order = [u for u in body.order if u in current]
+    for u in current:
+        if u not in new_order:
+            new_order.append(u)
+    await db.artists.update_one({"id": user["artist_id"]}, {"$set": {"portfolio": new_order}})
+    return {"portfolio": new_order}
+
+
+class HoursInput(BaseModel):
+    hours_config: dict
+
+
+@api_router.post("/studio/hours")
+async def set_hours(body: HoursInput, user: dict = Depends(get_current_user)):
+    if not user.get("artist_id"):
+        raise HTTPException(status_code=400, detail="Set up your studio first")
+    artist = await db.artists.find_one({"id": user["artist_id"]}, {"_id": 0})
+    if not artist:
+        raise HTTPException(status_code=404, detail="Artist not found")
+    # sanitize
+    cfg = {}
+    for d in WEEKDAYS:
+        v = body.hours_config.get(d, {})
+        cfg[d] = {
+            "open": bool(v.get("open", False)),
+            "start": str(v.get("start", "11:00")),
+            "end": str(v.get("end", "20:00")),
+        }
+    await db.parlours.update_one({"id": artist["parlour_id"]}, {"$set": {"hours_config": cfg}})
+    return {"hours_config": cfg}
 
 
 @api_router.get("/studio/me")
@@ -749,6 +829,11 @@ async def startup():
         await db.services.insert_many(data["services"])
         await db.reviews.insert_many(data["reviews"])
         logger.info("Seeded %d parlours", len(data["parlours"]))
+
+    # Ensure every parlour has a structured hours config for booking gating.
+    await db.parlours.update_many(
+        {"hours_config": {"$exists": False}}, {"$set": {"hours_config": default_hours_config()}}
+    )
 
     demo_artist = await db.users.find_one({"email": "artist@inkbound.com"})
     if not demo_artist:

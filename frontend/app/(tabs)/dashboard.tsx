@@ -81,6 +81,9 @@ export default function Dashboard() {
             <Pressable testID="preview-profile" style={styles.manageBtn} onPress={() => user?.artist_id && router.push(`/artist/${user.artist_id}`)}>
               <Icon name="eye-outline" size={18} color={colors.onSurface} />
             </Pressable>
+            <Pressable testID="edit-hours" style={styles.manageBtn} onPress={() => router.push("/studio/hours")}>
+              <Icon name="clock-outline" size={18} color={colors.onSurface} />
+            </Pressable>
             <Pressable testID="edit-studio" style={styles.manageBtn} onPress={() => router.push("/studio/setup")}>
               <Icon name="store-cog-outline" size={18} color={colors.onSurface} />
             </Pressable>

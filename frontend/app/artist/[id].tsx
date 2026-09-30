@@ -7,8 +7,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api/client";
 import { HeartButton } from "@/src/components/HeartButton";
 import { Icon } from "@/src/components/Icon";
+import { useToast } from "@/src/components/toast";
 import { PrimaryButton, Rating } from "@/src/components/ui";
 import { useFavIds } from "@/src/hooks/useFavourites";
+import { shareProfile } from "@/src/utils/share";
 import { fonts, makeStyles, useTheme } from "@/src/theme";
 import type { Artist, Parlour, Service } from "@/src/types";
 
@@ -22,6 +24,7 @@ export default function ArtistProfile() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const toast = useToast();
 
   const { data: favIds } = useFavIds();
 
@@ -50,7 +53,19 @@ export default function ArtistProfile() {
           <Pressable testID="back-btn" onPress={() => router.back()} style={styles.backBtn}>
             <Icon name="chevron-left" size={26} color={colors.onSurface} />
           </Pressable>
-          <HeartButton kind="artist" itemId={id as string} active={(favIds?.artist ?? []).includes(id as string)} />
+          <View style={styles.headerRight}>
+            <Pressable
+              testID="share-artist"
+              style={styles.backBtn}
+              onPress={async () => {
+                const r = await shareProfile("artist", id as string, artist.name);
+                if (r === "copied") toast.show("Profile link copied", "success");
+              }}
+            >
+              <Icon name="share-variant" size={20} color={colors.onSurface} />
+            </Pressable>
+            <HeartButton kind="artist" itemId={id as string} active={(favIds?.artist ?? []).includes(id as string)} />
+          </View>
         </View>
 
         <View style={styles.profile}>
@@ -115,6 +130,7 @@ const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.surface },
   loading: { flex: 1, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 4 },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
   backBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.surfaceSecondary, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.border },
   profile: { alignItems: "center", gap: 6, paddingTop: 8 },
   avatar: { width: 110, height: 110, borderRadius: 55, backgroundColor: colors.surfaceTertiary, borderWidth: 2, borderColor: colors.brandTertiary },

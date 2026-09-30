@@ -64,7 +64,7 @@ export default function BookingFlow() {
 
   const { data: slotData, isLoading: slotsLoading } = useQuery({
     queryKey: ["slots", artistId, date],
-    queryFn: () => api<{ slots: { time: string; available: boolean }[] }>(`/api/bookings/slots?artist_id=${artistId}&date=${date}`),
+    queryFn: () => api<{ open: boolean; slots: { time: string; available: boolean }[] }>(`/api/bookings/slots?artist_id=${artistId}&date=${date}`),
     enabled: !!artistId && !!date && step === 2,
   });
 
@@ -92,6 +92,14 @@ export default function BookingFlow() {
 
   const { artist, parlour, services } = data;
   const service = services.find((s) => s.id === serviceId) ?? null;
+
+  const WK = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+  const hoursCfg: Record<string, { open: boolean; start: string; end: string }> = parlour?.hours_config ?? {};
+  const isOpenOn = (iso: string) => {
+    const dow = new Date(iso + "T00:00:00").getDay(); // Sun=0
+    const key = WK[(dow + 6) % 7];
+    return hoursCfg[key]?.open !== false;
+  };
 
   const canNext =
     (step === 0 && !!serviceId) ||
@@ -156,11 +164,18 @@ export default function BookingFlow() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayRow}>
             {days.map((d) => {
               const active = d.iso === date;
+              const open = isOpenOn(d.iso);
               return (
-                <Pressable key={d.iso} testID={`date-${d.iso}`} onPress={() => setDate(d.iso)} style={[styles.dayCard, active && styles.dayActive]}>
-                  <Text style={[styles.dayDow, active && styles.dayTextActive]}>{d.dow}</Text>
-                  <Text style={[styles.dayNum, active && styles.dayTextActive]}>{d.day}</Text>
-                  <Text style={[styles.dayMonth, active && styles.dayTextActive]}>{d.month}</Text>
+                <Pressable
+                  key={d.iso}
+                  testID={`date-${d.iso}`}
+                  disabled={!open}
+                  onPress={() => setDate(d.iso)}
+                  style={[styles.dayCard, active && styles.dayActive, !open && styles.dayClosed]}
+                >
+                  <Text style={[styles.dayDow, active && styles.dayTextActive, !open && styles.dayClosedText]}>{d.dow}</Text>
+                  <Text style={[styles.dayNum, active && styles.dayTextActive, !open && styles.dayClosedText]}>{d.day}</Text>
+                  <Text style={[styles.dayMonth, active && styles.dayTextActive, !open && styles.dayClosedText]}>{open ? d.month : "closed"}</Text>
                 </Pressable>
               );
             })}
@@ -170,6 +185,12 @@ export default function BookingFlow() {
         {step === 2 ? (
           slotsLoading ? (
             <ActivityIndicator color={colors.brandPrimary} style={{ marginTop: 40 }} />
+          ) : slotData && slotData.open === false ? (
+            <View style={styles.closedBox}>
+              <Icon name="store-clock-outline" size={36} color={colors.muted} />
+              <Text style={styles.closedTitle}>Studio is closed that day</Text>
+              <Text style={styles.closedSub}>Go back and pick another date.</Text>
+            </View>
           ) : (
             <View style={styles.slotGrid}>
               {(slotData?.slots ?? []).map((s) => {
@@ -268,6 +289,8 @@ const useStyles = makeStyles((colors) => ({
   dayRow: { gap: 12, paddingVertical: 4 },
   dayCard: { width: 64, height: 88, borderRadius: 16, backgroundColor: colors.surfaceSecondary, alignItems: "center", justifyContent: "center", gap: 2, borderWidth: 1, borderColor: colors.border },
   dayActive: { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary },
+  dayClosed: { opacity: 0.4 },
+  dayClosedText: { color: colors.muted },
   dayDow: { color: colors.muted, fontFamily: fonts.medium, fontSize: 12 },
   dayNum: { color: colors.onSurface, fontFamily: fonts.display, fontSize: 22 },
   dayMonth: { color: colors.muted, fontFamily: fonts.body, fontSize: 11 },
@@ -280,6 +303,9 @@ const useStyles = makeStyles((colors) => ({
   slotText: { color: colors.onSurface, fontFamily: fonts.medium, fontSize: 15 },
   slotTextActive: { color: colors.onBrandPrimary },
   slotTextDisabled: { color: colors.muted },
+  closedBox: { alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 40 },
+  closedTitle: { color: colors.onSurface, fontFamily: fonts.medium, fontSize: 16 },
+  closedSub: { color: colors.muted, fontFamily: fonts.body, fontSize: 14 },
 
   summary: { gap: 4 },
   summaryHead: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 },
